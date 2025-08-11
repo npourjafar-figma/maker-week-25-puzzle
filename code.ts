@@ -152,20 +152,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         shape.shapeType = 'SQUARE';
         shape.x = col * (shape.width + spacing);
         shape.y = row * (shape.height + spacing);
-        
+
         // Apply image fill if available, otherwise use default orange color
         if (imageHash) {
-          shape.fills = [{ 
+          node.fills = [{ 
             type: 'IMAGE', 
             imageHash: imageHash,
             scaleMode: 'FILL'
           }];
         } else {
-          shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
+          node.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
         }
         
-        figma.currentPage.appendChild(shape);
-        nodes[row][col] = shape;
+        figma.currentPage.appendChild(node);
+        nodes[row][col] = node;
       }
     }
 
