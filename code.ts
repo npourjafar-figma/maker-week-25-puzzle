@@ -40,25 +40,30 @@ figma.ui.onmessage = async (msg: {type: string, rows: number, columns: number, i
     for (let row = 0; row < rows; row++) {
       nodes[row] = [];
       for (let col = 0; col < columns; col++) {
-        const shape = figma.createShapeWithText();
-        // You can set shapeType to one of: 'SQUARE' | 'ELLIPSE' | 'ROUNDED_RECTANGLE' | 'DIAMOND' | 'TRIANGLE_UP' | 'TRIANGLE_DOWN' | 'PARALLELOGRAM_RIGHT' | 'PARALLELOGRAM_LEFT'
-        shape.shapeType = 'ROUNDED_RECTANGLE';
-        shape.x = col * (shape.width + spacing);
-        shape.y = row * (shape.height + spacing);
+        const node = figma.createVector();
+        // Create a simple square
+        // The square is 100x100 units
+        node.vectorPaths = [{
+          windingRule: "EVENODD",
+          data: "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0",
+        }];
+        node.x = col * (node.width + spacing);
+        node.y = row * (node.height + spacing);
+        node.strokeWeight = 0
         
         // Apply image fill if available, otherwise use default orange color
         if (imageHash) {
-          shape.fills = [{ 
+          node.fills = [{ 
             type: 'IMAGE', 
             imageHash: imageHash,
             scaleMode: 'FILL'
           }];
         } else {
-          shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
+          node.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
         }
         
-        figma.currentPage.appendChild(shape);
-        nodes[row][col] = shape;
+        figma.currentPage.appendChild(node);
+        nodes[row][col] = node;
       }
     }
 
