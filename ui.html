@@ -7,6 +7,7 @@
 
 <button id="create">Create Completed Puzzle</button>
 <button id="cancel">Cancel</button>
+<button id="debug">Debug</button>
 <script>
 
 let currentImage = null;
@@ -179,6 +180,10 @@ document.getElementById('create').onclick = async () => {
 
 document.getElementById('cancel').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
+}
+
+document.getElementById('debug').onclick = () => {
+  parent.postMessage({ pluginMessage: { type: 'debug' } }, '*')
 }
 
 </script>

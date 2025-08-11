@@ -35,9 +35,14 @@ interface CreateShapesMessage {
   imageName?: string;
 }
 
-type PluginMessage = CreatePuzzleMessage | CreateShapesMessage;
+type PluginMessage = CreatePuzzleMessage | CreateShapesMessage | { type: 'debug' };
+
 
 figma.ui.onmessage = async (msg: PluginMessage) => {
+  if (msg.type === 'debug') {
+    console.log("ksitu", "hello")
+    return
+  }
   // Handle puzzle creation with individual pieces
   if (msg.type === 'create-puzzle') {
     const rows = msg.rows;
@@ -109,8 +114,21 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           }];
         }
         
-        figma.currentPage.appendChild(vector);
         nodes[row][col] = vector;
+      }
+    }
+
+
+    // set neighbor data
+    for (let row = 0; row < nodes.length; row++) {
+      for (let col = 0; col < nodes[row].length; col++) {
+        const neighbors = {
+          leftNeighbor: (col - 1 >= 0 && nodes[row][col - 1]) ? nodes[row][col - 1].id : undefined,
+          rightNeighbor: (col + 1 < nodes[row].length && nodes[row][col + 1]) ? nodes[row][col + 1].id : undefined,
+          topNeighbor: (row - 1 >= 0 && nodes[row - 1] && nodes[row - 1][col]) ? nodes[row - 1][col].id : undefined,
+          bottomNeighbor: (row + 1 < nodes.length && nodes[row + 1] && nodes[row + 1][col]) ? nodes[row + 1][col].id : undefined,
+        }
+        nodes[row][col].setPluginData('puzzleNeighbors', JSON.stringify(neighbors))
       }
     }
 
@@ -119,6 +137,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
         allNodes.push(nodes[row][col]);
+        figma.currentPage.appendChild(nodes[row][col])
       }
     }
     figma.currentPage.selection = allNodes;
