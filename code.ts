@@ -155,17 +155,17 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
         // Apply image fill if available, otherwise use default orange color
         if (imageHash) {
-          node.fills = [{ 
+          shape.fills = [{ 
             type: 'IMAGE', 
             imageHash: imageHash,
             scaleMode: 'FILL'
           }];
         } else {
-          node.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
+          shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
         }
         
-        figma.currentPage.appendChild(node);
-        nodes[row][col] = node;
+        figma.currentPage.appendChild(shape);
+        nodes[row][col] = shape;
       }
     }
 
