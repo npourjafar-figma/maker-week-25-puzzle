@@ -60,10 +60,29 @@ function generatePuzzlePreview() {
   canvas.height = pieceHeight;
   
   puzzlePieces = [];
-  let previewHTML = '<div style="display: inline-block; border: 1px solid #ddd; padding: 5px;"><h4>Puzzle Preview:</h4>';
+  
+  // Calculate preview dimensions while maintaining aspect ratio
+  const maxPreviewWidth = 200; // Maximum width for the entire preview
+  const aspectRatio = currentImage.width / currentImage.height;
+  let previewWidth, previewHeight;
+  
+  if (aspectRatio > 1) {
+    // Landscape image
+    previewWidth = Math.min(maxPreviewWidth, currentImage.width);
+    previewHeight = previewWidth / aspectRatio;
+  } else {
+    // Portrait or square image
+    previewHeight = Math.min(maxPreviewWidth, currentImage.height);
+    previewWidth = previewHeight * aspectRatio;
+  }
+  
+  const previewPieceWidth = previewWidth / columns;
+  const previewPieceHeight = previewHeight / rows;
+  
+  let previewHTML = `<div style="display: inline-block; border: 1px solid #ddd; padding: 5px;"><h4>Puzzle Preview (${currentImage.width}×${currentImage.height}px):</h4>`;
   
   for (let row = 0; row < rows; row++) {
-    previewHTML += '<div>';
+    previewHTML += '<div style="line-height: 0;">';
     for (let col = 0; col < columns; col++) {
       // Clear canvas
       ctx.clearRect(0, 0, pieceWidth, pieceHeight);
@@ -83,8 +102,8 @@ function generatePuzzlePreview() {
         dataURL: pieceDataURL
       });
       
-      // Add to preview
-      previewHTML += `<img src="${pieceDataURL}" style="width: 30px; height: 30px; margin: 1px; border: 1px solid #999;">`;
+      // Add to preview with correct proportions
+      previewHTML += `<img src="${pieceDataURL}" style="width: ${previewPieceWidth}px; height: ${previewPieceHeight}px; margin: 0; border: 1px solid #999; display: inline-block;">`;
     }
     previewHTML += '</div>';
   }
@@ -97,20 +116,43 @@ document.getElementById('create').onclick = async () => {
   const rows = parseInt(document.getElementById('rows').value, 10);
   const columns = parseInt(document.getElementById('columns').value, 10);
   
-  if (puzzlePieces.length > 0) {
-    // Convert puzzle pieces to ArrayBuffer format
+  if (currentImage) {
+    // Create cropped pieces
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Calculate piece dimensions
+    const pieceWidth = currentImage.width / columns;
+    const pieceHeight = currentImage.height / rows;
+    
+    canvas.width = pieceWidth;
+    canvas.height = pieceHeight;
+    
     const puzzleData = [];
     
-    for (const piece of puzzlePieces) {
-      // Convert dataURL to ArrayBuffer
-      const response = await fetch(piece.dataURL);
-      const arrayBuffer = await response.arrayBuffer();
-      
-      puzzleData.push({
-        row: piece.row,
-        col: piece.col,
-        imageData: arrayBuffer
-      });
+    // Create each cropped piece
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        // Clear canvas
+        ctx.clearRect(0, 0, pieceWidth, pieceHeight);
+        
+        // Draw the cropped piece
+        ctx.drawImage(
+          currentImage,
+          col * pieceWidth, row * pieceHeight, pieceWidth, pieceHeight, // source
+          0, 0, pieceWidth, pieceHeight // destination
+        );
+        
+        // Convert to blob and then to ArrayBuffer
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const arrayBuffer = await blob.arrayBuffer();
+        
+        puzzleData.push({
+          row: row,
+          col: col,
+          imageData: arrayBuffer
+        });
+      }
     }
     
     parent.postMessage({ 
@@ -118,7 +160,9 @@ document.getElementById('create').onclick = async () => {
         type: 'create-puzzle', 
         rows, 
         columns, 
-        puzzleData: puzzleData
+        puzzleData: puzzleData,
+        originalImageWidth: currentImage.width,
+        originalImageHeight: currentImage.height
       } 
     }, '*');
   } else {

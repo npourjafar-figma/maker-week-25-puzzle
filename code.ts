@@ -23,6 +23,8 @@ interface CreatePuzzleMessage {
   rows: number;
   columns: number;
   puzzleData: PuzzlePieceData[];
+  originalImageWidth: number;
+  originalImageHeight: number;
 }
 
 interface CreateShapesMessage {
@@ -41,10 +43,13 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     const rows = msg.rows;
     const columns = msg.columns;
     const puzzleData = msg.puzzleData;
+    const originalImageWidth = msg.originalImageWidth;
+    const originalImageHeight = msg.originalImageHeight;
 
     const nodes: SceneNode[][] = [];
-    const pieceWidth = 200; // Standard piece width
-    const pieceHeight = 200; // Standard piece height
+    // Calculate proper piece dimensions based on the original image
+    const pieceWidth = originalImageWidth / columns;
+    const pieceHeight = originalImageHeight / rows;
     
     // Create image hashes for each piece
     const imageHashes: (string | null)[][] = [];
@@ -71,18 +76,22 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     for (let row = 0; row < rows; row++) {
       nodes[row] = [];
       for (let col = 0; col < columns; col++) {
-        const shape = figma.createShapeWithText();
-        shape.shapeType = 'SQUARE';
+        const vector = figma.createVector();
         
         // Position pieces directly adjacent to each other
-        shape.x = col * pieceWidth;
-        shape.y = row * pieceHeight;
-        shape.resize(pieceWidth, pieceHeight);
+        vector.x = col * pieceWidth;
+        vector.y = row * pieceHeight;
+        vector.strokeWeight = 0;
+
+        vector.vectorPaths = [{
+          windingRule: "EVENODD",
+          data: `M 0 0 L ${pieceWidth} 0 L ${pieceWidth} ${pieceHeight} L 0 ${pieceHeight} L 0 0`,
+        }];
         
-        // Apply the specific puzzle piece image
+        // Apply the specific puzzle piece image (already cropped)
         const imageHash = imageHashes[row][col];
         if (imageHash) {
-          shape.fills = [{ 
+          vector.fills = [{ 
             type: 'IMAGE', 
             imageHash: imageHash,
             scaleMode: 'FILL'
@@ -90,7 +99,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         } else {
           // Fallback color with position indicator
           const hue = (row * columns + col) / (rows * columns);
-          shape.fills = [{ 
+          vector.fills = [{ 
             type: 'SOLID', 
             color: { 
               r: 0.5 + 0.5 * Math.sin(hue * Math.PI * 2),
@@ -100,13 +109,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           }];
         }
         
-        // Add text to show piece position (optional, can be removed for cleaner look)
-        if ('characters' in shape) {
-          shape.characters = `${row + 1},${col + 1}`;
-        }
-        
-        figma.currentPage.appendChild(shape);
-        nodes[row][col] = shape;
+        figma.currentPage.appendChild(vector);
+        nodes[row][col] = vector;
       }
     }
 
@@ -120,108 +124,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     figma.currentPage.selection = allNodes;
     figma.viewport.scrollAndZoomIntoView(allNodes);
     
-    figma.notify(`Created ${rows}×${columns} completed puzzle with ${puzzleData.length} pieces!`);
+    figma.notify(`Created ${rows}×${columns} completed puzzle (${originalImageWidth}×${originalImageHeight}px) with ${puzzleData.length} pieces!`);
   }
-  
-  // Handle regular shape creation (legacy support)
-  else if (msg.type === 'create-shapes') {
-    const rows = msg.rows;
-    const columns = msg.columns;
-
-    let imageHash: string | null = null;
-    
-    // Process the image if provided
-    if (msg.imageData && msg.imageName) {
-      try {
-        const image = figma.createImage(new Uint8Array(msg.imageData));
-        imageHash = image.hash;
-      } catch (error) {
-        console.error('Error processing image:', error);
-        figma.notify('Error processing image. Using default fill instead.');
-      }
-    }
-
-    const nodes: SceneNode[][] = [];
-    const spacing = 200;
-    
-    // Create shapes in a grid
-    for (let row = 0; row < rows; row++) {
-      nodes[row] = [];
-      for (let col = 0; col < columns; col++) {
-        const shape = figma.createShapeWithText();
-        shape.shapeType = 'SQUARE';
-        shape.x = col * (shape.width + spacing);
-        shape.y = row * (shape.height + spacing);
-
-        // Apply image fill if available, otherwise use default orange color
-        if (imageHash) {
-          shape.fills = [{ 
-            type: 'IMAGE', 
-            imageHash: imageHash,
-            scaleMode: 'FILL'
-          }];
-        } else {
-          shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
-        }
-        
-        figma.currentPage.appendChild(shape);
-        nodes[row][col] = shape;
-      }
-    }
-
-    // Create horizontal connectors (within each row)
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns - 1; col++) {
-        const connector = figma.createConnector();
-        connector.strokeWeight = 8;
-
-        connector.connectorStart = {
-          endpointNodeId: nodes[row][col].id,
-          magnet: 'AUTO',
-        };
-
-        connector.connectorEnd = {
-          endpointNodeId: nodes[row][col + 1].id,
-          magnet: 'AUTO',
-        };
-      }
-    }
-
-    // Create vertical connectors (between rows)
-    for (let row = 0; row < rows - 1; row++) {
-      for (let col = 0; col < columns; col++) {
-        const connector = figma.createConnector();
-        connector.strokeWeight = 8;
-
-        connector.connectorStart = {
-          endpointNodeId: nodes[row][col].id,
-          magnet: 'AUTO',
-        };
-
-        connector.connectorEnd = {
-          endpointNodeId: nodes[row + 1][col].id,
-          magnet: 'AUTO',
-        };
-      }
-    }
-
-    // Select all shapes
-    const allNodes: SceneNode[] = [];
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns; col++) {
-        allNodes.push(nodes[row][col]);
-      }
-    }
-    figma.currentPage.selection = allNodes;
-    figma.viewport.scrollAndZoomIntoView(allNodes);
-    
-    // Notify user about successful creation
-    if (imageHash) {
-      figma.notify(`Created ${rows}x${columns} grid with custom image!`);
-    } else {
-      figma.notify(`Created ${rows}x${columns} grid with default styling!`);
-    }
-  }
+ 
 
   // Make sure to close the plugin when you're done. Otherwise the plugin will
   // keep running, which shows the cancel button at the bottom of the screen.
