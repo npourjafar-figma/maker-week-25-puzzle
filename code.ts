@@ -12,41 +12,77 @@ figma.showUI(__html__);
 // Calls to "parent.postMessage" from within the HTML page will trigger this
 // callback. The callback will be passed the "pluginMessage" property of the
 // posted message.
-figma.ui.onmessage =  (msg: {type: string, count: number}) => {
+figma.ui.onmessage =  (msg: {type: string, rows: number, columns: number}) => {
   // One way of distinguishing between different types of messages sent from
   // your HTML page is to use an object with a "type" property like this.
   if (msg.type === 'create-shapes') {
-    // This plugin creates shapes and connectors on the screen.
-    const numberOfShapes = msg.count;
+    // This plugin creates shapes and connectors in a grid layout.
+    const rows = msg.rows;
+    const columns = msg.columns;
 
-    const nodes: SceneNode[] = [];
-    for (let i = 0; i < numberOfShapes; i++) {
-      const shape = figma.createShapeWithText();
-      // You can set shapeType to one of: 'SQUARE' | 'ELLIPSE' | 'ROUNDED_RECTANGLE' | 'DIAMOND' | 'TRIANGLE_UP' | 'TRIANGLE_DOWN' | 'PARALLELOGRAM_RIGHT' | 'PARALLELOGRAM_LEFT'
-      shape.shapeType = 'ROUNDED_RECTANGLE';
-      shape.x = i * (shape.width + 200);
-      shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
-      figma.currentPage.appendChild(shape);
-      nodes.push(shape);
+    const nodes: SceneNode[][] = [];
+    const spacing = 200;
+    
+    // Create shapes in a grid
+    for (let row = 0; row < rows; row++) {
+      nodes[row] = [];
+      for (let col = 0; col < columns; col++) {
+        const shape = figma.createShapeWithText();
+        // You can set shapeType to one of: 'SQUARE' | 'ELLIPSE' | 'ROUNDED_RECTANGLE' | 'DIAMOND' | 'TRIANGLE_UP' | 'TRIANGLE_DOWN' | 'PARALLELOGRAM_RIGHT' | 'PARALLELOGRAM_LEFT'
+        shape.shapeType = 'ROUNDED_RECTANGLE';
+        shape.x = col * (shape.width + spacing);
+        shape.y = row * (shape.height + spacing);
+        shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
+        figma.currentPage.appendChild(shape);
+        nodes[row][col] = shape;
+      }
     }
 
-    for (let i = 0; i < numberOfShapes - 1; i++) {
-      const connector = figma.createConnector();
-      connector.strokeWeight = 8;
+    // Create horizontal connectors (within each row)
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns - 1; col++) {
+        const connector = figma.createConnector();
+        connector.strokeWeight = 8;
 
-      connector.connectorStart = {
-        endpointNodeId: nodes[i].id,
-        magnet: 'AUTO',
-      };
+        connector.connectorStart = {
+          endpointNodeId: nodes[row][col].id,
+          magnet: 'AUTO',
+        };
 
-      connector.connectorEnd = {
-        endpointNodeId: nodes[i + 1].id,
-        magnet: 'AUTO',
-      };
+        connector.connectorEnd = {
+          endpointNodeId: nodes[row][col + 1].id,
+          magnet: 'AUTO',
+        };
+      }
     }
 
-    figma.currentPage.selection = nodes;
-    figma.viewport.scrollAndZoomIntoView(nodes);
+    // Create vertical connectors (between rows)
+    for (let row = 0; row < rows - 1; row++) {
+      for (let col = 0; col < columns; col++) {
+        const connector = figma.createConnector();
+        connector.strokeWeight = 8;
+
+        connector.connectorStart = {
+          endpointNodeId: nodes[row][col].id,
+          magnet: 'AUTO',
+        };
+
+        connector.connectorEnd = {
+          endpointNodeId: nodes[row + 1][col].id,
+          magnet: 'AUTO',
+        };
+      }
+    }
+
+    // Select all shapes
+    const allNodes: SceneNode[] = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        allNodes.push(nodes[row][col]);
+      }
+    }
+    figma.currentPage.selection = allNodes;
+    figma.viewport.scrollAndZoomIntoView(allNodes);
   }
 
   // Make sure to close the plugin when you're done. Otherwise the plugin will
