@@ -1,17 +1,65 @@
 <h2>Shape & Connector Creator</h2>
 <p>Rows: <input id="rows" type="number" value="3" min="1"></p>
 <p>Columns: <input id="columns" type="number" value="3" min="1"></p>
+<p>Image: <input id="image" type="file" accept="image/*"></p>
+<div id="image-preview" style="margin: 10px 0; text-align: center;"></div>
 
 <button id="create">Create</button>
 <button id="cancel">Cancel</button>
 <script>
 
+// Handle image preview
+document.getElementById('image').onchange = (event) => {
+  const file = event.target.files[0];
+  const preview = document.getElementById('image-preview');
+  
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; max-height: 100px; border: 1px solid #ccc;">`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
 document.getElementById('create').onclick = () => {
   const rowsInput = document.getElementById('rows');
   const columnsInput = document.getElementById('columns');
+  const imageInput = document.getElementById('image');
+  
   const rows = parseInt(rowsInput.value, 10);
   const columns = parseInt(columnsInput.value, 10);
-  parent.postMessage({ pluginMessage: { type: 'create-shapes', rows, columns } }, '*')
+  
+  if (imageInput.files && imageInput.files[0]) {
+    const file = imageInput.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const imageData = e.target.result;
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'create-shapes', 
+          rows, 
+          columns, 
+          imageData: imageData,
+          imageName: file.name 
+        } 
+      }, '*');
+    };
+    
+    reader.readAsArrayBuffer(file);
+  } else {
+    // No image selected, proceed without image
+    parent.postMessage({ 
+      pluginMessage: { 
+        type: 'create-shapes', 
+        rows, 
+        columns 
+      } 
+    }, '*');
+  }
 }
 
 document.getElementById('cancel').onclick = () => {
