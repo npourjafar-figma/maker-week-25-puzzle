@@ -12,11 +12,119 @@ figma.showUI(__html__);
 // Calls to "parent.postMessage" from within the HTML page will trigger this
 // callback. The callback will be passed the "pluginMessage" property of the
 // posted message.
-figma.ui.onmessage = async (msg: {type: string, rows: number, columns: number, imageData?: ArrayBuffer, imageName?: string}) => {
-  // One way of distinguishing between different types of messages sent from
-  // your HTML page is to use an object with a "type" property like this.
-  if (msg.type === 'create-shapes') {
-    // This plugin creates shapes and connectors in a grid layout.
+interface PuzzlePieceData {
+  row: number;
+  col: number;
+  imageData: ArrayBuffer;
+}
+
+interface CreatePuzzleMessage {
+  type: 'create-puzzle';
+  rows: number;
+  columns: number;
+  puzzleData: PuzzlePieceData[];
+}
+
+interface CreateShapesMessage {
+  type: 'create-shapes';
+  rows: number;
+  columns: number;
+  imageData?: ArrayBuffer;
+  imageName?: string;
+}
+
+type PluginMessage = CreatePuzzleMessage | CreateShapesMessage;
+
+figma.ui.onmessage = async (msg: PluginMessage) => {
+  // Handle puzzle creation with individual pieces
+  if (msg.type === 'create-puzzle') {
+    const rows = msg.rows;
+    const columns = msg.columns;
+    const puzzleData = msg.puzzleData;
+
+    const nodes: SceneNode[][] = [];
+    const pieceWidth = 200; // Standard piece width
+    const pieceHeight = 200; // Standard piece height
+    
+    // Create image hashes for each piece
+    const imageHashes: (string | null)[][] = [];
+    
+    for (let row = 0; row < rows; row++) {
+      imageHashes[row] = [];
+      for (let col = 0; col < columns; col++) {
+        const pieceData = puzzleData.find((p: PuzzlePieceData) => p.row === row && p.col === col);
+        if (pieceData) {
+          try {
+            const image = figma.createImage(new Uint8Array(pieceData.imageData));
+            imageHashes[row][col] = image.hash;
+          } catch (error) {
+            console.error(`Error processing piece ${row},${col}:`, error);
+            imageHashes[row][col] = null;
+          }
+        } else {
+          imageHashes[row][col] = null;
+        }
+      }
+    }
+    
+    // Create shapes in a grid with no spacing (completed puzzle)
+    for (let row = 0; row < rows; row++) {
+      nodes[row] = [];
+      for (let col = 0; col < columns; col++) {
+        const shape = figma.createShapeWithText();
+        shape.shapeType = 'SQUARE';
+        
+        // Position pieces directly adjacent to each other
+        shape.x = col * pieceWidth;
+        shape.y = row * pieceHeight;
+        shape.resize(pieceWidth, pieceHeight);
+        
+        // Apply the specific puzzle piece image
+        const imageHash = imageHashes[row][col];
+        if (imageHash) {
+          shape.fills = [{ 
+            type: 'IMAGE', 
+            imageHash: imageHash,
+            scaleMode: 'FILL'
+          }];
+        } else {
+          // Fallback color with position indicator
+          const hue = (row * columns + col) / (rows * columns);
+          shape.fills = [{ 
+            type: 'SOLID', 
+            color: { 
+              r: 0.5 + 0.5 * Math.sin(hue * Math.PI * 2),
+              g: 0.5 + 0.5 * Math.sin((hue + 0.33) * Math.PI * 2), 
+              b: 0.5 + 0.5 * Math.sin((hue + 0.66) * Math.PI * 2)
+            } 
+          }];
+        }
+        
+        // Add text to show piece position (optional, can be removed for cleaner look)
+        if ('characters' in shape) {
+          shape.characters = `${row + 1},${col + 1}`;
+        }
+        
+        figma.currentPage.appendChild(shape);
+        nodes[row][col] = shape;
+      }
+    }
+
+    // Select all shapes (no connectors)
+    const allNodes: SceneNode[] = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        allNodes.push(nodes[row][col]);
+      }
+    }
+    figma.currentPage.selection = allNodes;
+    figma.viewport.scrollAndZoomIntoView(allNodes);
+    
+    figma.notify(`Created ${rows}×${columns} completed puzzle with ${puzzleData.length} pieces!`);
+  }
+  
+  // Handle regular shape creation (legacy support)
+  else if (msg.type === 'create-shapes') {
     const rows = msg.rows;
     const columns = msg.columns;
 
@@ -40,17 +148,11 @@ figma.ui.onmessage = async (msg: {type: string, rows: number, columns: number, i
     for (let row = 0; row < rows; row++) {
       nodes[row] = [];
       for (let col = 0; col < columns; col++) {
-        const node = figma.createVector();
-        // Create a simple square
-        // The square is 100x100 units
-        node.vectorPaths = [{
-          windingRule: "EVENODD",
-          data: "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0",
-        }];
-        node.x = col * (node.width + spacing);
-        node.y = row * (node.height + spacing);
-        node.strokeWeight = 0
-        
+        const shape = figma.createShapeWithText();
+        shape.shapeType = 'SQUARE';
+        shape.x = col * (shape.width + spacing);
+        shape.y = row * (shape.height + spacing);
+
         // Apply image fill if available, otherwise use default orange color
         if (imageHash) {
           node.fills = [{ 

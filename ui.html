@@ -1,14 +1,18 @@
-<h2>Shape & Connector Creator</h2>
-<p>Rows: <input id="rows" type="number" value="3" min="1"></p>
-<p>Columns: <input id="columns" type="number" value="3" min="1"></p>
+<h2>Completed Puzzle Creator</h2>
+<p>Rows: <input id="rows" type="number" value="3" min="1" max="10"></p>
+<p>Columns: <input id="columns" type="number" value="3" min="1" max="10"></p>
 <p>Image: <input id="image" type="file" accept="image/*"></p>
 <div id="image-preview" style="margin: 10px 0; text-align: center;"></div>
+<div id="puzzle-preview" style="margin: 10px 0; text-align: center;"></div>
 
-<button id="create">Create</button>
+<button id="create">Create Completed Puzzle</button>
 <button id="cancel">Cancel</button>
 <script>
 
-// Handle image preview
+let currentImage = null;
+let puzzlePieces = [];
+
+// Handle image preview and puzzle piece generation
 document.getElementById('image').onchange = (event) => {
   const file = event.target.files[0];
   const preview = document.getElementById('image-preview');
@@ -16,40 +20,107 @@ document.getElementById('image').onchange = (event) => {
   if (file) {
     const reader = new FileReader();
     reader.onload = (e) => {
-      preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; max-height: 100px; border: 1px solid #ccc;">`;
+      const img = new Image();
+      img.onload = () => {
+        currentImage = img;
+        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; max-height: 100px; border: 1px solid #ccc;">`;
+        generatePuzzlePreview();
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   } else {
     preview.innerHTML = '';
+    document.getElementById('puzzle-preview').innerHTML = '';
+    currentImage = null;
+    puzzlePieces = [];
   }
 };
 
-document.getElementById('create').onclick = () => {
-  const rowsInput = document.getElementById('rows');
-  const columnsInput = document.getElementById('columns');
-  const imageInput = document.getElementById('image');
+// Update puzzle preview when rows/columns change
+document.getElementById('rows').onchange = generatePuzzlePreview;
+document.getElementById('columns').onchange = generatePuzzlePreview;
+
+function generatePuzzlePreview() {
+  if (!currentImage) return;
   
-  const rows = parseInt(rowsInput.value, 10);
-  const columns = parseInt(columnsInput.value, 10);
+  const rows = parseInt(document.getElementById('rows').value, 10);
+  const columns = parseInt(document.getElementById('columns').value, 10);
+  const puzzlePreview = document.getElementById('puzzle-preview');
   
-  if (imageInput.files && imageInput.files[0]) {
-    const file = imageInput.files[0];
-    const reader = new FileReader();
+  // Create canvas to crop image pieces
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Calculate piece dimensions
+  const pieceWidth = currentImage.width / columns;
+  const pieceHeight = currentImage.height / rows;
+  
+  canvas.width = pieceWidth;
+  canvas.height = pieceHeight;
+  
+  puzzlePieces = [];
+  let previewHTML = '<div style="display: inline-block; border: 1px solid #ddd; padding: 5px;"><h4>Puzzle Preview:</h4>';
+  
+  for (let row = 0; row < rows; row++) {
+    previewHTML += '<div>';
+    for (let col = 0; col < columns; col++) {
+      // Clear canvas
+      ctx.clearRect(0, 0, pieceWidth, pieceHeight);
+      
+      // Draw the cropped piece
+      ctx.drawImage(
+        currentImage,
+        col * pieceWidth, row * pieceHeight, pieceWidth, pieceHeight, // source
+        0, 0, pieceWidth, pieceHeight // destination
+      );
+      
+      // Convert to blob and store
+      const pieceDataURL = canvas.toDataURL('image/png');
+      puzzlePieces.push({
+        row: row,
+        col: col,
+        dataURL: pieceDataURL
+      });
+      
+      // Add to preview
+      previewHTML += `<img src="${pieceDataURL}" style="width: 30px; height: 30px; margin: 1px; border: 1px solid #999;">`;
+    }
+    previewHTML += '</div>';
+  }
+  
+  previewHTML += '</div>';
+  puzzlePreview.innerHTML = previewHTML;
+}
+
+document.getElementById('create').onclick = async () => {
+  const rows = parseInt(document.getElementById('rows').value, 10);
+  const columns = parseInt(document.getElementById('columns').value, 10);
+  
+  if (puzzlePieces.length > 0) {
+    // Convert puzzle pieces to ArrayBuffer format
+    const puzzleData = [];
     
-    reader.onload = (e) => {
-      const imageData = e.target.result;
-      parent.postMessage({ 
-        pluginMessage: { 
-          type: 'create-shapes', 
-          rows, 
-          columns, 
-          imageData: imageData,
-          imageName: file.name 
-        } 
-      }, '*');
-    };
+    for (const piece of puzzlePieces) {
+      // Convert dataURL to ArrayBuffer
+      const response = await fetch(piece.dataURL);
+      const arrayBuffer = await response.arrayBuffer();
+      
+      puzzleData.push({
+        row: piece.row,
+        col: piece.col,
+        imageData: arrayBuffer
+      });
+    }
     
-    reader.readAsArrayBuffer(file);
+    parent.postMessage({ 
+      pluginMessage: { 
+        type: 'create-puzzle', 
+        rows, 
+        columns, 
+        puzzleData: puzzleData
+      } 
+    }, '*');
   } else {
     // No image selected, proceed without image
     parent.postMessage({ 
