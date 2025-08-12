@@ -39,12 +39,25 @@ interface CreateShapesMessage {
   imageName?: string;
 }
 
+interface Neighbor {
+  neighborId: string;
+  isTab: boolean; // true if sticks out, false if indent
+}
+
+interface NeighborsData {
+  left?: Neighbor;
+  right?: Neighbor;
+  top?: Neighbor;
+  bottom?: Neighbor;
+}
+
 type PluginMessage = CreatePuzzleMessage | CreateShapesMessage | { type: 'debug' };
 
 
 figma.ui.onmessage = async (msg: PluginMessage) => {
   if (msg.type === 'debug') {
     console.log("ksitu", "hello")
+    console.log("ksitu", figma.currentPage.selection.map(node => node.getPluginData('puzzleNeighbors')))
     return
   }
   // Handle puzzle creation with individual pieces
@@ -124,17 +137,27 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
 
     // set neighbor data
-    for (let row = 0; row < nodes.length; row++) {
-      for (let col = 0; col < nodes[row].length; col++) {
-        const neighbors = {
-          leftNeighbor: (col - 1 >= 0 && nodes[row][col - 1]) ? nodes[row][col - 1].id : undefined,
-          rightNeighbor: (col + 1 < nodes[row].length && nodes[row][col + 1]) ? nodes[row][col + 1].id : undefined,
-          topNeighbor: (row - 1 >= 0 && nodes[row - 1] && nodes[row - 1][col]) ? nodes[row - 1][col].id : undefined,
-          bottomNeighbor: (row + 1 < nodes.length && nodes[row + 1] && nodes[row + 1][col]) ? nodes[row + 1][col].id : undefined,
+    const neighborsData: NeighborsData[][] = [];
+    for (let row = 0; row < nodes.length ; row++) {
+      neighborsData.push([])
+      for (let col = 0; col < nodes[row].length ; col++) {
+        const neighbors: NeighborsData = {
+          left: (col - 1 >= 0 && nodes[row][col - 1]) ? {neighborId: nodes[row][col - 1].id, isTab: !neighborsData[row][col - 1].right!.isTab} : undefined,
+          right: (col + 1 < nodes[row].length && nodes[row][col + 1]) ? { neighborId: nodes[row][col + 1].id, isTab: Math.random() < 0.5 } : undefined,
+          top: (row - 1 >= 0 && nodes[row - 1] && nodes[row - 1][col]) 
+            ? { neighborId: nodes[row - 1][col].id, isTab: !neighborsData[row-1][col].bottom!.isTab } 
+            : undefined,
+          bottom: (row + 1 < nodes.length && nodes[row + 1] && nodes[row + 1][col]) 
+            ? { neighborId: nodes[row + 1][col].id, isTab: Math.random() < 0.5 } 
+            : undefined,
         }
+        neighborsData[row].push(neighbors)
         nodes[row][col].setPluginData('puzzleNeighbors', JSON.stringify(neighbors))
       }
     }
+
+    console.log('neighborsData', neighborsData)
+
 
     // Select all shapes (no connectors)
     const allNodes: SceneNode[] = [];
@@ -144,6 +167,38 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         figma.currentPage.appendChild(nodes[row][col])
       }
     }
+
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        const currentNode = nodes[row][col];
+        const neighbors = neighborsData[row][col];
+        for (const direction of ['left', 'right', 'top', 'bottom'] as const) {
+          console.log('direction', direction)
+          const neighborInfo = neighbors[direction];
+          console.log('neighborInfo', neighborInfo)
+          if (neighborInfo && neighborInfo.isTab) {
+            console.log('neighborInfo.isTab', neighborInfo.isTab)
+            const neighborNodeId = neighborInfo.neighborId;
+            const connector = figma.createConnector();
+            console.log('connector', connector, currentNode.id, neighborNodeId)
+            connector.connectorStart = { 
+              endpointNodeId: currentNode.id, 
+              magnet: 'AUTO'
+            };
+            console.log('connector.connectorStart', connector.connectorStart)
+            connector.connectorEnd = { 
+              endpointNodeId: neighborNodeId, 
+              magnet: 'AUTO'
+            };
+            console.log('connector.connectorEnd', connector.connectorEnd)
+            figma.currentPage.appendChild(connector);
+            console.log('neighborId', neighborNodeId)
+          }
+        }
+      }
+    }
+
     figma.currentPage.selection = allNodes;
     figma.viewport.scrollAndZoomIntoView(allNodes);
     
