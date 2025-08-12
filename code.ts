@@ -27,6 +27,7 @@ interface CreatePuzzleMessage {
   rows: number;
   columns: number;
   puzzleData: PuzzlePieceData[];
+  imageData: ArrayBuffer;
   originalImageWidth: number;
   originalImageHeight: number;
 }
@@ -74,29 +75,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     const pieceHeight = originalImageHeight / rows;
 
     // Create image hashes for each piece
-    const imageHashes: (string | null)[][] = [];
+    const imageHash: string = figma.createImage(new Uint8Array(msg.imageData)).hash;
 
-    for (let row = 0; row < rows; row++) {
-      imageHashes[row] = [];
-      for (let col = 0; col < columns; col++) {
-        const pieceData = puzzleData.find(
-          (p: PuzzlePieceData) => p.row === row && p.col === col
-        );
-        if (pieceData) {
-          try {
-            const image = figma.createImage(
-              new Uint8Array(pieceData.imageData)
-            );
-            imageHashes[row][col] = image.hash;
-          } catch (error) {
-            console.error(`Error processing piece ${row},${col}:`, error);
-            imageHashes[row][col] = null;
-          }
-        } else {
-          imageHashes[row][col] = null;
-        }
-      }
-    }
+    const D = Math.min(pieceWidth, pieceHeight) / 4;
 
     // Create shapes in a grid with no spacing (completed puzzle)
     for (let row = 0; row < rows; row++) {
@@ -110,13 +91,14 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         vector.strokeWeight = 0;
 
         // Apply the specific puzzle piece image (already cropped)
-        const imageHash = imageHashes[row][col];
+        // const imageHash = imageHashes[row][col];
         if (imageHash) {
           vector.fills = [
             {
               type: "IMAGE",
               imageHash: imageHash,
-              scaleMode: "FIT",
+              scaleMode: "CROP",
+              imageTransform: [[(pieceWidth+2*D)/originalImageWidth, 0, col/columns - D/originalImageWidth], [0, (pieceHeight+2*D)/originalImageHeight, row/rows - D/originalImageHeight]]
             },
           ];
         } else {
@@ -186,7 +168,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         const currentNode = nodes[row][col];
         const midW = pieceWidth / 2;
         const midH = pieceHeight / 2;
-        const D = Math.min(pieceWidth, pieceHeight) / 4;
         let data = "M";
 
         // top edge
