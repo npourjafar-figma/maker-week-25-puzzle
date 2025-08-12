@@ -242,7 +242,7 @@
   
   <div class="form-group">
     <label for="rows"><span class="emoji">📏</span>Rows:</label>
-    <input id="rows" type="number" value="3" min="1" max="10">
+    <input id="rows" type="number" value="4" min="1" max="10">
   </div>
   
   <div class="form-group">
@@ -382,23 +382,23 @@ document.getElementById('create').onclick = async () => {
     // Calculate piece dimensions
     const pieceWidth = currentImage.width / columns;
     const pieceHeight = currentImage.height / rows;
-    
-    canvas.width = pieceWidth;
-    canvas.height = pieceHeight;
-    
+    const D = Math.min(pieceWidth, pieceHeight)/4
+
+    canvas.width = pieceWidth+2*D;
+    canvas.height = pieceHeight+2*D;
     const puzzleData = [];
     
     // Create each cropped piece
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
         // Clear canvas
-        ctx.clearRect(0, 0, pieceWidth, pieceHeight);
+        ctx.clearRect(0, 0, pieceWidth+2*D, pieceHeight+2*D);
         
         // Draw the cropped piece
         ctx.drawImage(
           currentImage,
-          col * pieceWidth, row * pieceHeight, pieceWidth, pieceHeight, // source
-          0, 0, pieceWidth, pieceHeight // destination
+          col * pieceWidth-D, row * pieceHeight-D, pieceWidth+2*D, pieceHeight+2*D, // source
+          0, 0, pieceWidth+2*D, pieceHeight+2*D // destination
         );
         
         // Convert to blob and then to ArrayBuffer

@@ -104,14 +104,14 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         vector.x = col * pieceWidth;
         vector.y = row * pieceHeight;
         vector.strokeWeight = 0;
-
+        
         // Apply the specific puzzle piece image (already cropped)
         const imageHash = imageHashes[row][col];
         if (imageHash) {
           vector.fills = [{ 
             type: 'IMAGE', 
             imageHash: imageHash,
-            scaleMode: 'FILL'
+            scaleMode: 'FIT',
           }];
         } else {
           // Fallback color with position indicator
