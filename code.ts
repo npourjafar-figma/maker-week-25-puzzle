@@ -68,7 +68,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     const originalImageWidth = msg.originalImageWidth;
     const originalImageHeight = msg.originalImageHeight;
 
-    const nodes: SceneNode[][] = [];
+    const nodes: VectorNode[][] = [];
     // Calculate proper piece dimensions based on the original image
     const pieceWidth = originalImageWidth / columns;
     const pieceHeight = originalImageHeight / rows;
@@ -105,11 +105,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         vector.y = row * pieceHeight;
         vector.strokeWeight = 0;
 
-        vector.vectorPaths = [{
-          windingRule: "EVENODD",
-          data: `M 0 0 L ${pieceWidth} 0 L ${pieceWidth} ${pieceHeight} L 0 ${pieceHeight} L 0 0`,
-        }];
-        
         // Apply the specific puzzle piece image (already cropped)
         const imageHash = imageHashes[row][col];
         if (imageHash) {
@@ -156,7 +151,56 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       }
     }
 
-    console.log('neighborsData', neighborsData)
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        console.log('row', row, 'col', col)
+        const currentNode = nodes[row][col];
+        const midW = pieceWidth/2
+        const midH = pieceHeight/2
+        const D = Math.min(pieceWidth, pieceHeight)/4
+        let data = 'M'
+        console.log('neighborsData[row][col]', neighborsData[row][col])
+        // top edge
+        data += ` 0 0 L ${-1*D} ${-1*D} L 0 0`
+        if (neighborsData[row][col]?.top) {
+          console.log('top', neighborsData[row][col].top)
+          const baseHeight = 0
+          const d = neighborsData[row][col].top!.isTab ? -1*D : D
+          data += ` L ${midW} ${baseHeight+d}`
+        }
+        // right edge
+        data += ` L ${pieceWidth} 0`
+        if (neighborsData[row][col]?.right) {
+          console.log('right', neighborsData[row][col].right)
+          const baseWidth = pieceWidth
+          const d = neighborsData[row][col].right!.isTab ? D : -1*D
+          data += ` L ${baseWidth+d} ${midH}`
+        }
+        // bottom edge
+        data += ` L ${pieceWidth} ${pieceHeight} L ${pieceWidth+D} ${pieceHeight+D} L ${pieceWidth} ${pieceHeight}`
+        if (neighborsData[row][col]?.bottom) {
+          console.log('bottom', neighborsData[row][col].bottom)
+          const baseHeight = pieceHeight
+          const d = neighborsData[row][col].bottom!.isTab ? D : -1*D
+          data += ` L ${midW} ${baseHeight+d}`
+        }
+        // left edge
+        data += ` L 0 ${pieceHeight}`
+        if (neighborsData[row][col]?.left) {
+          console.log('left', neighborsData[row][col].left)
+          const baseWidth = 0
+          const d = neighborsData[row][col].left!.isTab ? -1*D : D
+          data += ` L ${baseWidth+d} ${midH}`
+        }
+        console.log('data', data)
+        currentNode.vectorPaths = [{
+          windingRule: "EVENODD",
+          data,
+        }]
+
+      }
+    }
+    console.log('nodes', nodes[0][0].vectorPaths)
 
 
     // Select all shapes (no connectors)
@@ -165,37 +209,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       for (let col = 0; col < columns; col++) {
         allNodes.push(nodes[row][col]);
         figma.currentPage.appendChild(nodes[row][col])
-      }
-    }
-
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns; col++) {
-        const currentNode = nodes[row][col];
-        const neighbors = neighborsData[row][col];
-        for (const direction of ['left', 'right', 'top', 'bottom'] as const) {
-          console.log('direction', direction)
-          const neighborInfo = neighbors[direction];
-          console.log('neighborInfo', neighborInfo)
-          if (neighborInfo && neighborInfo.isTab) {
-            console.log('neighborInfo.isTab', neighborInfo.isTab)
-            const neighborNodeId = neighborInfo.neighborId;
-            const connector = figma.createConnector();
-            console.log('connector', connector, currentNode.id, neighborNodeId)
-            connector.connectorStart = { 
-              endpointNodeId: currentNode.id, 
-              magnet: 'AUTO'
-            };
-            console.log('connector.connectorStart', connector.connectorStart)
-            connector.connectorEnd = { 
-              endpointNodeId: neighborNodeId, 
-              magnet: 'AUTO'
-            };
-            console.log('connector.connectorEnd', connector.connectorEnd)
-            figma.currentPage.appendChild(connector);
-            console.log('neighborId', neighborNodeId)
-          }
-        }
       }
     }
 
