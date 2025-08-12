@@ -375,44 +375,16 @@ document.getElementById('create').onclick = async () => {
   const columns = parseInt(document.getElementById('columns').value, 10);
   
   if (currentImage) {
-    // Create image data
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
     
-    // Calculate piece dimensions
-    const pieceWidth = currentImage.width / columns;
-    const pieceHeight = currentImage.height / rows;
-    const D = Math.min(pieceWidth, pieceHeight)/4
-
-    canvas.width = currentImage.width;
-    canvas.height = currentImage.height;
-    const puzzleData = [];;
-    
-    ctx.clearRect(0, 0, currentImage.width, currentImage.height);
-    
-    // Draw the cropped piece
-    ctx.drawImage(
-      currentImage,
-      0, 0, currentImage.width, currentImage.height
-    );
-    
-    // Convert to blob and then to ArrayBuffer
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    const arrayBuffer = await blob.arrayBuffer();
-    
-    // puzzleData.push({
-    //   row: row,
-    //   col: col,
-    //   imageData: arrayBuffer
-    // });
-    const imageData = arrayBuffer;
+    const fileInput = document.getElementById('image');
+    const file = fileInput.files[0];
+    const imageData = await file.arrayBuffer();
     
     parent.postMessage({ 
       pluginMessage: { 
         type: 'create-puzzle', 
         rows, 
         columns, 
-        puzzleData: puzzleData,
         imageData: imageData,
         originalImageWidth: currentImage.width,
         originalImageHeight: currentImage.height

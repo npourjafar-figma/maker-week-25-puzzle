@@ -13,20 +13,10 @@ figma.showUI(__html__, {
   themeColors: true,
 });
 
-// Calls to "parent.postMessage" from within the HTML page will trigger this
-// callback. The callback will be passed the "pluginMessage" property of the
-// posted message.
-interface PuzzlePieceData {
-  row: number;
-  col: number;
-  imageData: ArrayBuffer;
-}
-
 interface CreatePuzzleMessage {
   type: "create-puzzle";
   rows: number;
   columns: number;
-  puzzleData: PuzzlePieceData[];
   imageData: ArrayBuffer;
   originalImageWidth: number;
   originalImageHeight: number;
@@ -57,6 +47,119 @@ type PluginMessage =
   | CreateShapesMessage
   | { type: "debug" };
 
+// --- Curved stud configuration and helpers ----------------------------------
+type StudConfig = {
+  widthFactor: number;   // stud width relative to min(w,h)
+  depthFactor: number;   // stud depth relative to min(w,h)
+  rise1: number;         // first rise fraction of depth
+  rise2: number;         // second rise fraction of depth
+  blend: number;         // 0..1 rounding of crown
+  cornerJog: number;     // small chamfer at corners in units of depth
+};
+
+const STUD_CFG: StudConfig = {
+  widthFactor: 1 / 3,
+  depthFactor: 1 / 6,
+  rise1: 0.5,
+  rise2: 0.7,
+  blend: 0.2,
+  cornerJog: 1.0,
+};
+
+const L = (x: number, y: number) => ` L ${x} ${y}`;
+const C = (
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  x: number,
+  y: number
+) => ` C ${x1} ${y1} ${x2} ${y2} ${x} ${y}`;
+
+type Side = "top" | "right" | "bottom" | "left";
+function makeSideTransform(side: Side, w: number, h: number) {
+  switch (side) {
+    case "top":
+      return (x: number, y: number) => [x, y] as const;
+    case "right":
+      return (x: number, y: number) => [w - y, x] as const; // rotate 90° CW
+    case "bottom":
+      return (x: number, y: number) => [w - x, h - y] as const; // 180°
+    case "left":
+      return (x: number, y: number) => [y, h - x] as const; // 270° CW
+  }
+}
+
+function edgeWithStud(
+  side: Side,
+  w: number,
+  h: number,
+  hasNeighbor: boolean,
+  isTab: boolean | undefined,
+  cfg: StudConfig
+) {
+  const minDim = Math.min(w, h);
+  const studW = minDim * cfg.widthFactor;
+  const depth = minDim * cfg.depthFactor;
+  const jog = cfg.cornerJog * depth;
+
+  // Length across this side (x dimension in local top-frame for the side)
+  const across = side === "top" || side === "bottom" ? w : h;
+  const mid = across / 2;
+  const half = studW / 2;
+  const yBase = 0;
+  const dy = isTab ? -depth : depth; // outward on TOP is negative y
+
+  const blend = cfg.blend;
+  const rise1 = cfg.rise1 * dy;
+  const rise2 = cfg.rise2 * dy;
+
+  const T = makeSideTransform(side, w, h);
+  const l = (x: number, y: number) => L(...T(x, y));
+  const c = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    x: number,
+    y: number
+  ) => C(...T(x1, y1), ...T(x2, y2), ...T(x, y));
+
+  let d = "";
+  // Do not move (M) here; caller already positioned the pen at the corner
+  d += l(-jog, -jog);
+  d += l(0, 0);
+
+  if (!hasNeighbor || isTab === undefined) {
+    d += l(across, yBase);
+    return d;
+  }
+
+  d += l(mid - half, yBase);
+  d += c(mid - half + half * blend, yBase, mid - half, yBase + rise1, mid - half, yBase + rise2);
+  d += c(mid - half, yBase + dy, mid - half * (1 - blend), yBase + dy, mid, yBase + dy);
+  d += c(mid + half * (1 - blend), yBase + dy, mid + half, yBase + dy, mid + half, yBase + rise2);
+  d += c(mid + half, yBase + rise1, mid + half * (1 - blend), yBase, mid + half, yBase);
+  d += l(across, yBase);
+  return d;
+}
+
+function buildPiecePath(
+  w: number,
+  h: number,
+  neighbors: { top?: { isTab: boolean }; right?: { isTab: boolean }; bottom?: { isTab: boolean }; left?: { isTab: boolean } },
+  cfg: StudConfig
+) {
+  // Start once, then continue with a single continuous subpath
+  let d = `M 0 0`;
+  d += edgeWithStud("top", w, h, !!neighbors.top, neighbors.top?.isTab, cfg);
+  d += edgeWithStud("right", w, h, !!neighbors.right, neighbors.right?.isTab, cfg);
+  d += edgeWithStud("bottom", w, h, !!neighbors.bottom, neighbors.bottom?.isTab, cfg);
+  d += edgeWithStud("left", w, h, !!neighbors.left, neighbors.left?.isTab, cfg);
+  d += " Z";
+  return d;
+}
+
 figma.ui.onmessage = async (msg: PluginMessage) => {
   if (msg.type === "debug") {
     return;
@@ -65,7 +168,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
   if (msg.type === "create-puzzle") {
     const rows = msg.rows;
     const columns = msg.columns;
-    const puzzleData = msg.puzzleData;
     const originalImageWidth = msg.originalImageWidth;
     const originalImageHeight = msg.originalImageHeight;
 
@@ -74,10 +176,12 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     const pieceWidth = originalImageWidth / columns;
     const pieceHeight = originalImageHeight / rows;
 
-    // Create image hashes for each piece
-    const imageHash: string = figma.createImage(new Uint8Array(msg.imageData)).hash;
+    const imageHash = figma.createImage(new Uint8Array(msg.imageData)).hash;
 
-    const D = Math.min(pieceWidth, pieceHeight) / 4;
+    const D = Math.min(pieceWidth, pieceHeight) / 6;
+
+    // const X = studWidth/2;
+    // const Y = D/2;
 
     // Create shapes in a grid with no spacing (completed puzzle)
     for (let row = 0; row < rows; row++) {
@@ -92,30 +196,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
         // Apply the specific puzzle piece image (already cropped)
         // const imageHash = imageHashes[row][col];
-        if (imageHash) {
-          vector.fills = [
-            {
-              type: "IMAGE",
-              imageHash: imageHash,
-              scaleMode: "CROP",
-              imageTransform: [[(pieceWidth+2*D)/originalImageWidth, 0, col/columns - D/originalImageWidth], [0, (pieceHeight+2*D)/originalImageHeight, row/rows - D/originalImageHeight]]
-            },
-          ];
-        } else {
-          // Fallback color with position indicator
-          const hue = (row * columns + col) / (rows * columns);
-          vector.fills = [
-            {
-              type: "SOLID",
-              color: {
-                r: 0.5 + 0.5 * Math.sin(hue * Math.PI * 2),
-                g: 0.5 + 0.5 * Math.sin((hue + 0.33) * Math.PI * 2),
-                b: 0.5 + 0.5 * Math.sin((hue + 0.66) * Math.PI * 2),
-              },
-            },
-          ];
-        }
-
+        vector.fills = [
+          {
+            type: "IMAGE",
+            imageHash: imageHash,
+            scaleMode: "CROP",
+            imageTransform: [[(pieceWidth+2*D)/originalImageWidth, 0, col/columns - D/originalImageWidth], [0, (pieceHeight+2*D)/originalImageHeight, row/rows - D/originalImageHeight]]
+          },
+        ];
+      
         nodes[row][col] = vector;
       }
     }
@@ -165,47 +254,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
-        const currentNode = nodes[row][col];
-        const midW = pieceWidth / 2;
-        const midH = pieceHeight / 2;
-        let data = "M";
-
-        // top edge
-        data += ` 0 0 L ${-1 * D} ${-1 * D} L 0 0`;
-        if (neighborsData[row][col]?.top) {
-          const baseHeight = 0;
-          const d = neighborsData[row][col].top!.isTab ? -1 * D : D;
-          data += ` L ${midW} ${baseHeight + d}`;
-        }
-        // right edge
-        data += ` L ${pieceWidth} 0`;
-        if (neighborsData[row][col]?.right) {
-          const baseWidth = pieceWidth;
-          const d = neighborsData[row][col].right!.isTab ? D : -1 * D;
-          data += ` L ${baseWidth + d} ${midH}`;
-        }
-        // bottom edge
-        data += ` L ${pieceWidth} ${pieceHeight} L ${pieceWidth + D} ${
-          pieceHeight + D
-        } L ${pieceWidth} ${pieceHeight}`;
-        if (neighborsData[row][col]?.bottom) {
-          const baseHeight = pieceHeight;
-          const d = neighborsData[row][col].bottom!.isTab ? D : -1 * D;
-          data += ` L ${midW} ${baseHeight + d}`;
-        }
-        // left edge
-        data += ` L 0 ${pieceHeight}`;
-        if (neighborsData[row][col]?.left) {
-          const baseWidth = 0;
-          const d = neighborsData[row][col].left!.isTab ? -1 * D : D;
-          data += ` L ${baseWidth + d} ${midH}`;
-        }
-
-        currentNode.vectorPaths = [
+        const neighbors = neighborsData[row][col];
+        const pathData = buildPiecePath(
+          pieceWidth,
+          pieceHeight,
           {
-            windingRule: "EVENODD",
-            data,
+            top: neighbors.top && { isTab: neighbors.top.isTab },
+            right: neighbors.right && { isTab: neighbors.right.isTab },
+            bottom: neighbors.bottom && { isTab: neighbors.bottom.isTab },
+            left: neighbors.left && { isTab: neighbors.left.isTab },
           },
+          STUD_CFG
+        );
+        nodes[row][col].vectorPaths = [
+          { windingRule: "EVENODD", data: pathData },
         ];
       }
     }
@@ -219,11 +281,10 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       }
     }
 
-    figma.currentPage.selection = allNodes;
     figma.viewport.scrollAndZoomIntoView(allNodes);
 
     figma.notify(
-      `Created ${rows}×${columns} completed puzzle (${originalImageWidth}×${originalImageHeight}px) with ${puzzleData.length} pieces!`
+      `Created ${rows}×${columns} completed puzzle (${originalImageWidth}*${originalImageHeight}px)`
     );
   }
 
