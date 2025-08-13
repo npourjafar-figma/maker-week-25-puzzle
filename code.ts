@@ -189,9 +189,17 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       for (let col = 0; col < columns; col++) {
         const vector = figma.createVector();
 
-        // Position pieces directly adjacent to each other
-        vector.x = col * pieceWidth;
-        vector.y = row * pieceHeight;
+        // Calculate canvas bounds for scattering
+        const canvasWidth = Math.max(1200, originalImageWidth * 2);
+        const canvasHeight = Math.max(800, originalImageHeight * 2);
+
+        // SCATTER pieces randomly instead of grid alignment
+        const scatterX = Math.random() * (canvasWidth - pieceWidth);
+        const scatterY = Math.random() * (canvasHeight - pieceHeight);
+        
+        vector.x = scatterX;
+        vector.y = scatterY;
+        vector.rotation = (Math.random() - 0.5) * 30; // Random rotation ±15 degrees
         vector.strokeWeight = 0;
 
         // Apply the specific puzzle piece image (already cropped)
@@ -284,7 +292,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     figma.viewport.scrollAndZoomIntoView(allNodes);
 
     figma.notify(
-      `Created ${rows}×${columns} completed puzzle (${originalImageWidth}*${originalImageHeight}px)`
+      `Created ${rows}×${columns} scrambled puzzle! Arrange the pieces to solve. 🧩`
     );
   }
 
