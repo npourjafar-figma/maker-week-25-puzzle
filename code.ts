@@ -199,7 +199,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         
         vector.x = scatterX;
         vector.y = scatterY;
-        vector.rotation = (Math.random() - 0.5) * 30; // Random rotation ±15 degrees
+        // Remove rotation - pieces maintain their original orientation
         vector.strokeWeight = 0;
 
         // Apply the specific puzzle piece image (already cropped)
