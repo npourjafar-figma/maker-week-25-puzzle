@@ -7,263 +7,243 @@
   }
 
   body {
-    font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #fafafa;
     min-height: 100vh;
-    padding: 20px;
+    padding: 24px;
     color: #333;
+    line-height: 1.5;
   }
 
   .container {
-    max-width: 400px;
+    max-width: 420px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    animation: slideIn 0.6s ease-out;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e5e5;
   }
 
   h2 {
     text-align: center;
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f9ca24);
-    background-size: 300% 300%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: gradientShift 3s ease infinite;
-    font-size: 24px;
-    margin-bottom: 25px;
-    font-weight: bold;
+    color: #1a1a1a;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
-  @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+  .puzzle-icon {
+    font-size: 24px;
+    opacity: 0.7;
   }
 
   .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
 
   label {
     display: block;
     margin-bottom: 8px;
-    font-weight: bold;
+    font-weight: 500;
     color: #555;
     font-size: 14px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 16px;
+  }
+
+  .input-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
   }
 
   input[type="number"], input[type="file"] {
     width: 100%;
     padding: 12px 16px;
-    border: 2px solid #e1e8ed;
-    border-radius: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
     font-size: 16px;
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease;
     background: #fff;
   }
 
   input[type="number"]:focus, input[type="file"]:focus {
     outline: none;
-    border-color: #4ecdc4;
-    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
-    transform: translateY(-2px);
+    border-color: #666;
   }
 
   input[type="file"] {
     cursor: pointer;
-    position: relative;
+    padding: 16px;
+    text-align: center;
+    border: 2px dashed #ddd;
+    background: #fafafa;
   }
 
   input[type="file"]:hover {
-    background: #f8f9fa;
-    border-color: #4ecdc4;
+    background: #f0f0f0;
+    border-color: #999;
   }
 
   .preview-container {
-    margin: 20px 0;
-    text-align: center;
+    margin: 24px 0;
   }
 
   .preview-box {
-    background: #f8f9fa;
-    border: 2px dashed #ddd;
-    border-radius: 12px;
-    padding: 15px;
-    margin: 10px 0;
-    transition: all 0.3s ease;
+    background: #fafafa;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    text-align: center;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .preview-box:not(:empty) {
-    border-color: #4ecdc4;
-    background: rgba(78, 205, 196, 0.05);
+    background: white;
   }
 
   .preview-box img {
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
-  .button-container {
-    display: flex;
-    gap: 10px;
-    margin-top: 25px;
-  }
+
 
   button {
-    flex: 1;
-    padding: 14px 20px;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-  }
-
-  button:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
     width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    transition: left 0.5s;
-  }
-
-  button:hover:before {
-    left: 100%;
+    padding: 16px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 12px;
   }
 
   #create {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    background: #1a1a1a;
     color: white;
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
   }
 
   #create:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
+    background: #333;
   }
 
-  #create:active {
-    transform: translateY(-1px);
+  #create:disabled {
+    background: #ccc;
+    cursor: not-allowed;
   }
-
-
 
   #debug {
-    background: linear-gradient(135deg, #a29bfe, #6c5ce7);
-    color: white;
-    box-shadow: 0 6px 20px rgba(162, 155, 254, 0.4);
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #e5e5e5;
     font-size: 14px;
   }
 
   #debug:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(162, 155, 254, 0.6);
+    background: #e5e5e5;
   }
 
-  .puzzle-info {
-    text-align: center;
-    margin: 15px 0;
-    padding: 12px;
-    background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
-    border-radius: 10px;
+  /* Puzzle grid visual elements */
+  .grid-visual {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background: currentColor;
+    opacity: 0.3;
+    margin: 0 2px;
+    border-radius: 2px;
+  }
+
+  .empty-state {
+    color: #999;
     font-size: 14px;
-    font-weight: bold;
-    color: #2d3436;
-    border: 2px solid #fdcb6e;
+    font-style: italic;
   }
 
-  .emoji {
-    font-size: 20px;
-    margin: 0 5px;
+  /* Clean puzzle piece preview grid */
+  .puzzle-grid {
+    display: block;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 auto;
+    width: fit-content;
+    max-width: 100%;
   }
 
-  /* Fun loading animation for preview */
-  .loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #4ecdc4;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+  .puzzle-row {
+    display: flex;
+    line-height: 0;
   }
 
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  .puzzle-grid img {
+    display: block;
+    margin: 0;
+    border: 0;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    flex-shrink: 0;
   }
 
-  /* Puzzle piece icons */
-  .puzzle-icon {
-    display: inline-block;
-    margin: 0 5px;
-    font-size: 18px;
-    animation: bounce 2s infinite;
+  .puzzle-row img:last-child {
+    border-right: none;
   }
 
-  @keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-      transform: translateY(0);
-    }
-    40% {
-      transform: translateY(-5px);
-    }
-    60% {
-      transform: translateY(-3px);
-    }
+  .puzzle-row:last-child img {
+    border-bottom: none;
   }
 </style>
 </head>
 
 <body>
 <div class="container">
-  <h2><span class="puzzle-icon">🧩</span>Figma Puzzle Creator<span class="puzzle-icon">🧩</span></h2>
+  <h2>
+    <span class="puzzle-icon">🧩</span>
+    Puzzle Creator
+  </h2>
   
-  <div class="form-group">
-    <label for="rows"><span class="emoji">📏</span>Rows:</label>
-    <input id="rows" type="number" value="4" min="1" max="10">
+  <div class="input-row">
+    <div class="form-group">
+      <label for="rows">Rows</label>
+      <input id="rows" type="number" value="4" min="1" max="10">
+    </div>
+    
+    <div class="form-group">
+      <label for="columns">Columns</label>
+      <input id="columns" type="number" value="3" min="1" max="10">
+    </div>
   </div>
   
   <div class="form-group">
-    <label for="columns"><span class="emoji">📐</span>Columns:</label>
-    <input id="columns" type="number" value="3" min="1" max="10">
-  </div>
-  
-  <div class="form-group">
-    <label for="image"><span class="emoji">🖼️</span>Choose Your Image:</label>
-    <input id="image" type="file" accept="image/*">
+    <label for="image">Upload Image</label>
+    <input id="image" type="file" accept="image/*" placeholder="Choose image file">
   </div>
   
   <div class="preview-container">
-    <div id="image-preview" class="preview-box"></div>
-    <div id="puzzle-preview" class="preview-box"></div>
+    <div id="image-preview" class="preview-box">
+      <span class="empty-state">Image preview will appear here</span>
+    </div>
+    <div id="puzzle-preview" class="preview-box">
+      <span class="empty-state">Puzzle preview will appear here</span>
+    </div>
   </div>
 
-  <div class="button-container">
-    <button id="create"><span class="emoji">🚀</span>Create Puzzle</button>
-    <button id="debug"><span class="emoji">🐛</span>Debug</button>
-  </div>
+  <button id="create">Create Puzzle</button>
+  <button id="debug">Debug</button>
 </div>
 
 <script>
@@ -282,15 +262,15 @@ document.getElementById('image').onchange = (event) => {
       const img = new Image();
       img.onload = () => {
         currentImage = img;
-        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; max-height: 100px; border: 1px solid #ccc;">`;
+        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; max-height: 100px;">`;
         generatePuzzlePreview();
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   } else {
-    preview.innerHTML = '';
-    document.getElementById('puzzle-preview').innerHTML = '';
+    preview.innerHTML = '<span class="empty-state">Image preview will appear here</span>';
+    document.getElementById('puzzle-preview').innerHTML = '<span class="empty-state">Puzzle preview will appear here</span>';
     currentImage = null;
     puzzlePieces = [];
   }
@@ -321,16 +301,14 @@ function generatePuzzlePreview() {
   puzzlePieces = [];
   
   // Calculate preview dimensions while maintaining aspect ratio
-  const maxPreviewWidth = 200; // Maximum width for the entire preview
+  const maxPreviewWidth = 300; // Increased max width for better grid display
   const aspectRatio = currentImage.width / currentImage.height;
   let previewWidth, previewHeight;
   
   if (aspectRatio > 1) {
-    // Landscape image
     previewWidth = Math.min(maxPreviewWidth, currentImage.width);
     previewHeight = previewWidth / aspectRatio;
   } else {
-    // Portrait or square image
     previewHeight = Math.min(maxPreviewWidth, currentImage.height);
     previewWidth = previewHeight * aspectRatio;
   }
@@ -338,10 +316,10 @@ function generatePuzzlePreview() {
   const previewPieceWidth = previewWidth / columns;
   const previewPieceHeight = previewHeight / rows;
   
-  let previewHTML = `<div class="puzzle-info"><span class="emoji">🎯</span>Puzzle Preview (${currentImage.width}×${currentImage.height}px)<span class="emoji">🎯</span></div>`;
+  let previewHTML = '<div class="puzzle-grid">';
   
   for (let row = 0; row < rows; row++) {
-    previewHTML += '<div style="line-height: 0;">';
+    previewHTML += '<div class="puzzle-row">';
     for (let col = 0; col < columns; col++) {
       // Clear canvas
       ctx.clearRect(0, 0, pieceWidth, pieceHeight);
@@ -349,8 +327,8 @@ function generatePuzzlePreview() {
       // Draw the cropped piece
       ctx.drawImage(
         currentImage,
-        col * pieceWidth, row * pieceHeight, pieceWidth, pieceHeight, // source
-        0, 0, pieceWidth, pieceHeight // destination
+        col * pieceWidth, row * pieceHeight, pieceWidth, pieceHeight,
+        0, 0, pieceWidth, pieceHeight
       );
       
       // Convert to blob and store
@@ -362,10 +340,11 @@ function generatePuzzlePreview() {
       });
       
       // Add to preview with correct proportions
-      previewHTML += `<img src="${pieceDataURL}" style="width: ${previewPieceWidth}px; height: ${previewPieceHeight}px; margin: 0; border: 1px solid #999; display: inline-block;">`;
+      previewHTML += `<img src="${pieceDataURL}" style="width: ${previewPieceWidth}px; height: ${previewPieceHeight}px; display: inline-block;">`;
     }
     previewHTML += '</div>';
   }
+  previewHTML += '</div>';
   
   puzzlePreview.innerHTML = previewHTML;
 }
@@ -375,7 +354,6 @@ document.getElementById('create').onclick = async () => {
   const columns = parseInt(document.getElementById('columns').value, 10);
   
   if (currentImage) {
-    
     const fileInput = document.getElementById('image');
     const file = fileInput.files[0];
     const imageData = await file.arrayBuffer();
@@ -401,8 +379,6 @@ document.getElementById('create').onclick = async () => {
     }, '*');
   }
 }
-
-
 
 document.getElementById('debug').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'debug' } }, '*')
