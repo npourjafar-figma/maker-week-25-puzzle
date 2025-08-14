@@ -212,6 +212,25 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
             imageTransform: [[(pieceWidth+2*D)/originalImageWidth, 0, col/columns - D/originalImageWidth], [0, (pieceHeight+2*D)/originalImageHeight, row/rows - D/originalImageHeight]]
           },
         ];
+
+        vector.effects = [
+          {
+            type: "INNER_SHADOW",
+            color: { r: 0, g: 0, b: 0, a: 0.5 },
+            offset: { x: -9, y: -9 },
+            radius: 15,
+            visible: true,
+            blendMode: "NORMAL",
+          },
+          {
+            type: "INNER_SHADOW",
+            color: { r: 1, g: 1, b: 1, a: 0.5 },
+            offset: { x: 9, y: 9 },
+            radius: 15,
+            visible: true,
+            blendMode: "NORMAL",
+          },
+        ];
       
         nodes[row][col] = vector;
       }
