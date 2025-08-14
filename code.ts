@@ -63,7 +63,7 @@ const STUD_CFG: StudConfig = {
   rise1: 0.5,
   rise2: 0.7,
   blend: 0.2,
-  cornerJog: 0.0,
+  cornerJog: 1.0,
 };
 
 const L = (x: number, y: number) => ` L ${x} ${y}`;
@@ -160,20 +160,6 @@ function buildPiecePath(
   return d;
 }
 
-// Calculate what bounds this piece actually needs
-function calculatePieceBounds(neighbors: { top?: { isTab: boolean }; right?: { isTab: boolean }; bottom?: { isTab: boolean }; left?: { isTab: boolean } }, w: number, h: number, cfg: StudConfig) {
-  const depth = Math.min(w, h) * cfg.depthFactor;
-  
-  const bounds = {
-    minX: neighbors.left?.isTab ? -depth : 0,
-    maxX: w + (neighbors.right?.isTab ? depth : 0),
-    minY: neighbors.top?.isTab ? -depth : 0, 
-    maxY: h + (neighbors.bottom?.isTab ? depth : 0)
-  };
-  
-  return bounds;
-}
-
 figma.ui.onmessage = async (msg: PluginMessage) => {
   if (msg.type === "debug") {
     return;
@@ -192,7 +178,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     const imageHash = figma.createImage(new Uint8Array(msg.imageData)).hash;
 
-    const _D = Math.min(pieceWidth, pieceHeight) / 6;
+    const D = Math.min(pieceWidth, pieceHeight) / 6;
 
     // const X = studWidth/2;
     // const Y = D/2;
@@ -214,34 +200,16 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         vector.x = scatterX;
         vector.y = scatterY;
         // Remove rotation - pieces maintain their original orientation
-        
-        // Add thin black outline to puzzle pieces
-        vector.strokeWeight = 1;
-        vector.strokes = [{ 
-          type: "SOLID", 
-          color: { r: 0, g: 0, b: 0 } // Black outline
-        }];
+        vector.strokeWeight = 0;
 
         // Apply the specific puzzle piece image (already cropped)
         // const imageHash = imageHashes[row][col];
-        // We'll calculate proper bounds after neighbor data is set, for now use max bounds
-        const maxDepth = Math.min(pieceWidth, pieceHeight) * STUD_CFG.depthFactor;
-        const pieceBounds = {
-          minX: col > 0 ? -maxDepth : 0,
-          maxX: pieceWidth + (col < columns - 1 ? maxDepth : 0),
-          minY: row > 0 ? -maxDepth : 0,
-          maxY: pieceHeight + (row < rows - 1 ? maxDepth : 0)
-        };
-        
-        const boundsWidth = pieceBounds.maxX - pieceBounds.minX;
-        const boundsHeight = pieceBounds.maxY - pieceBounds.minY;
-        
         vector.fills = [
           {
             type: "IMAGE",
             imageHash: imageHash,
             scaleMode: "CROP",
-            imageTransform: [[boundsWidth/originalImageWidth, 0, (col * pieceWidth + pieceBounds.minX)/originalImageWidth], [0, boundsHeight/originalImageHeight, (row * pieceHeight + pieceBounds.minY)/originalImageHeight]]
+            imageTransform: [[(pieceWidth+2*D)/originalImageWidth, 0, col/columns - D/originalImageWidth], [0, (pieceHeight+2*D)/originalImageHeight, row/rows - D/originalImageHeight]]
           },
         ];
       
@@ -295,33 +263,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
         const neighbors = neighborsData[row][col];
-        const neighborShape = {
-          top: neighbors.top && { isTab: neighbors.top.isTab },
-          right: neighbors.right && { isTab: neighbors.right.isTab },
-          bottom: neighbors.bottom && { isTab: neighbors.bottom.isTab },
-          left: neighbors.left && { isTab: neighbors.left.isTab },
-        };
-        
-        // Calculate the actual bounds this piece needs
-        const bounds = calculatePieceBounds(neighborShape, pieceWidth, pieceHeight, STUD_CFG);
-        
-        // Create path data with origin offset to account for negative bounds
         const pathData = buildPiecePath(
           pieceWidth,
           pieceHeight,
-          neighborShape,
+          {
+            top: neighbors.top && { isTab: neighbors.top.isTab },
+            right: neighbors.right && { isTab: neighbors.right.isTab },
+            bottom: neighbors.bottom && { isTab: neighbors.bottom.isTab },
+            left: neighbors.left && { isTab: neighbors.left.isTab },
+          },
           STUD_CFG
         );
-        
-        // Translate the path to start from the correct origin
-        const offsetPathData = `M ${-bounds.minX} ${-bounds.minY} ` + pathData.substring(pathData.indexOf('L'));
-        
         nodes[row][col].vectorPaths = [
-          { windingRule: "EVENODD", data: offsetPathData },
+          { windingRule: "EVENODD", data: pathData },
         ];
-        
-        // Adjust the vector size to fit the actual bounds
-        nodes[row][col].resize(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
       }
     }
 
